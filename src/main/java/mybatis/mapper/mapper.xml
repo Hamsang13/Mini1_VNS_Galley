@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="mapper">
+
+<!-- 페이징용 -->
+
+<select id="totalcount" resultType="int" parameterType="String">
+ SELECT COUNT(*) from p_t WHERE p_status = 1 AND o_val2 = #{p_idx}
+ </select>
+ 
+<select id="totalqnacount" resultType="int" parameterType="String">
+ SELECT COUNT(*) FROM p_t WHERE p_status = 1 AND o_val1 = 2;
+ </select>
+
+
+<resultMap type="mybatis.vo.productVO" id="map1">
+<id column="p_idx" property="p_idx"/>
+ <collection property="queslist" column="p_idx" ofType="mybatis.vo.questionVO" select="queslist"></collection>
+</resultMap>
+
+<resultMap type="mybatis.vo.questionVO" id="map2">
+<id column="p_idx" property="p_idx"/>
+<result column="m_idx" property="m_idx"/>
+<result column="o_val2" property="o_val2"/>
+ <association property="wllog" column="p_idx" javaType="mybatis.vo.writelogVO" select="wllog"></association>
+ <association property="pvo" column="o_val2" javaType="mybatis.vo.productVO" select="viewproduct"></association>
+ <association property="mvo" column="m_idx" javaType="mybatis.vo.memberVO" select="membersel"></association>
+ <collection property="avolist" column="p_idx" ofType="mybatis.vo.answerVO" select="answerlist"></collection>
+</resultMap>
+
+<resultMap type="mybatis.vo.writelogVO" id="map3">
+<result column="m_idx" property="m_idx"/>
+<result column="p_idx" property="p_idx"/>
+<association property="pvo" javaType="mybatis.vo.productVO" column="p_idx" select="wlproduct"></association>
+<association property="mvo" javaType="mybatis.vo.memberVO" column="m_idx" select="membersel"></association>
+</resultMap>
+
+<resultMap type="mybatis.vo.answerVO" id="map4">
+<id column="m_idx" property="m_idx"/>
+<association property="mvo" javaType="mybatis.vo.memberVO" column="m_idx" select="membersel"></association>
+</resultMap>
+
+<resultMap type="mybatis.vo.questionVO" id="map5">
+<id column="p_idx" property="p_idx"/>
+<result column="m_idx" property="m_idx"/>
+ <association property="wllog" column="p_idx" javaType="mybatis.vo.writelogVO" select="wllog"></association>
+ <association property="mvo" column="m_idx" javaType="mybatis.vo.memberVO" select="membersel"></association>
+ <collection property="avolist" column="p_idx" ofType="mybatis.vo.answerVO" select="answerlist"></collection>
+</resultMap>
+
+<resultMap type="mybatis.vo.orderlogVO" id="map6">
+<id column="ol_idx" property="ol_idx"/>
+<result column="o_idx" property="o_idx"/>
+<result column="m_idx" property="m_idx"/>
+<association property="mvo" column="m_idx" javaType="mybatis.vo.memberVO" select="membersel"></association>
+<association property="ovo" column="o_idx" javaType="mybatis.vo.orderVO" select="ordersel"></association>
+</resultMap>
+
+<resultMap type="mybatis.vo.orderVO" id="map7">
+<id column="o_idx" property="o_idx"/>
+<result column="p_idx" property="p_idx"/>
+<association property="pvo" column="p_idx" javaType="mybatis.vo.productVO" select="viewproduct"></association>
+</resultMap>
+
+<!-- select문 -->
+
+
+<select id="orderlist" resultMap="map6" parameterType="String">
+ SELECT * FROM ol_t WHERE ol_idx = #{ol_idx}
+</select>
+
+<select id="ordersel" parameterType="String" resultMap="map7">
+ SELECT * FROM o_t WHERE o_idx = #{o_idx}
+</select>
+
+<select id="shoplist" resultType="mybatis.vo.productVO">
+ SELECT * FROM p_t WHERE o_val1 = 1 AND p_status = 1 ORDER BY p_idx DESC
+</select>
+
+<select id="shopalllist" resultMap="map1">
+ SELECT * FROM p_t WHERE o_val1 = 1
+</select>
+
+<select id="viewproduct" resultMap="map1" parameterType="String">
+ SELECT * FROM p_t WHERE p_idx = #{p_idx}
+</select>
+
+<select id="queslist" resultMap="map2" parameterType="String">
+ SELECT * FROM p_t WHERE o_val2 = #{p_idx}
+</select>
+
+<select id="answerlist" resultMap="map4" parameterType="String">
+ SELECT * FROM p_t WHERE o_val2 = #{p_idx}
+</select>
+
+<select id="wllog" resultMap="map3" parameterType="String">
+ SELECT * FROM wl_t WHERE p_idx=#{p_idx}
+</select>
+
+<select id="wlproduct" resultType="mybatis.vo.productVO" parameterType="String">
+ SELECT * FROM p_t WHERE p_idx = #{p_idx}
+</select>
+
+<select id="membersel" resultType="mybatis.vo.memberVO" parameterType="String">
+ SELECT * FROM m_t WHERE m_idx = #{m_idx}
+</select>
+
+<select id="queslistpage" parameterType="map" resultMap="map2">
+SELECT * FROM(
+		SELECT @RN:=@RN+1 AS rnum ,a.* FROM(
+			SELECT * FROM p_t WHERE o_val2=#{p_idx} and p_status = 1 ORDER BY p_idx DESC) a,
+		   (SELECT @RN:=0) b
+	) c WHERE c.rnum BETWEEN #{begin} AND #{end}
+</select>
+
+
+<select id="queslistall" parameterType="map" resultMap="map2">
+SELECT * FROM(
+		SELECT @RN:=@RN+1 AS rnum ,a.* FROM(
+			SELECT * FROM p_t WHERE p_status = 1 AND o_val1 = 2 ORDER BY p_idx DESC) a,
+		   (SELECT @RN:=0) b
+	) c WHERE c.rnum BETWEEN #{begin} AND #{end}
+</select>
+
+<select id="shopsearchlist" resultType="mybatis.vo.productVO" parameterType="Map">
+ SELECT * FROM p_t
+ <where>
+  <choose>
+   <when test="type == 0">
+    p_status = 1 AND o_val1 = 1 AND p_artist LIKE CONCAT('%',#{str},'%')
+   </when>
+   <when test="type == 1">
+    p_status = 1 AND o_val1 = 1 AND p_title LIKE CONCAT('%',#{str},'%')
+   </when>
+  </choose>
+ </where>
+</select>
+<select id="museumsearchlist" resultType="mybatis.vo.productVO" parameterType="Map">
+ SELECT * FROM p_t
+ <where>
+  <choose>
+   <when test="type == 0">
+    p_status = 0 AND o_val1 = 1 AND p_artist LIKE CONCAT('%',#{str},'%')
+   </when>
+   <when test="type == 1">
+    p_status = 0 AND o_val1 = 1 AND p_title LIKE CONCAT('%',#{str},'%')
+   </when>
+  </choose>
+ </where>
+</select>
+
+
+<select id="museumlist" resultType="mybatis.vo.productVO">
+ SELECT * FROM p_t WHERE o_val1 = 1 AND p_status = 0 ORDER BY p_idx DESC
+</select>
+
+
+<!-- insert문 -->
+
+
+<insert id="qwrite" parameterType="mybatis.vo.questionVO" useGeneratedKeys="true" keyProperty="p_idx" keyColumn="p_idx">
+ INSERT INTO p_t(m_idx,p_title,p_content,p_status,o_val1,o_val2,p_secret,p_wait) 
+ 		VALUES(#{m_idx},#{p_title},#{p_content},1,2,#{o_val2},#{p_secret},1)
+</insert>
+
+<insert id="qwrite_log" parameterType="mybatis.vo.writelogVO">
+ INSERT INTO wl_t(m_idx,p_idx,wl_date)
+ 	   VALUES(#{m_idx},#{p_idx},now())
+</insert>
+
+<insert id="owrite" parameterType="mybatis.vo.orderVO" useGeneratedKeys="true" keyProperty="o_idx" keyColumn="o_idx">
+ INSERT INTO o_t(o_class , o_num , o_status , p_idx , o_val1 , o_val2 , o_val3 , o_val4)
+        VALUES(1,(now()+#{p_idx}),1,#{p_idx} , #{o_val1} , #{o_val2} , #{o_val3} , #{o_val4})
+</insert>
+
+<insert id="owrite_log" parameterType="mybatis.vo.orderlogVO" useGeneratedKeys="true" keyProperty="ol_idx" keyColumn="ol_idx">
+ INSERT INTO ol_t(m_idx,o_idx,ol_date)
+        VALUES(#{m_idx},#{o_idx},now())
+</insert>
+
+<!-- update문 -->
+<update id="cntupdate" parameterType="Map">
+UPDATE p_t SET
+	p_cnt = p_cnt - #{o_val1},
+	p_status = CASE WHEN p_cnt = 0 THEN 0 ELSE p_status END
+	WHERE p_idx = #{p_idx}
+</update>
+
+
+<!-- 영석씨 매퍼 -->
+
+
+<select id="myorderlist" parameterType="String" resultMap="map6">
+ SELECT * FROM ol_t WHERE m_idx = #{m_idx};
+</select>
+
+
+
+<select id="myorder" parameterType="String" resultType="hashmap">
+	select a.*, b.o_idx, b.ol_date, b.ol_idx, b.m_idx, b.m_id
+	from (
+		select a.*, b.o_val1, b.p_content from o_t a 
+		join (select * from p_t where o_val1 = 1) b on a.p_idx = b.p_idx
+	    ) a
+	join (
+	select a.m_idx, a.m_id, b.o_idx, b.ol_date, b.ol_idx from (select * from m_t where m_idx =#{m_idx}) a
+	join ol_t b on a.m_idx = b.m_idx
+    ) b on a.o_idx = b.o_idx;
+</select>
+
+
+<select id="login" parameterType="Map" resultType="mybatis.vo.memberVO">
+    select * from m_t
+    where m_id = #{m_id} and
+    m_pw = #{m_pw}
+  </select>
+  <!-- 아이디 중복 체크-->
+  <select id="reg" parameterType="String" resultType="mybatis.vo.memberVO">
+ SELECT * FROM m_t  where m_id = #{m_id}
+  </select> 
+  
+  <insert id="add" parameterType="Map">
+  	insert into m_t (m_id, m_pw, m_name, m_add, m_phone, m_email, m_birth, m_joindate, m_status )
+  	values (#{m_id}, #{m_pw}, #{m_name}, #{m_add}, #{m_phone}, #{m_email}, #{m_birth}, now(), 1)
+  </insert>
+
+<!-- 지혜씨 매퍼 -->
+
+<select id="selectAdminPvo" resultType="mybatis.vo.productVO" parameterType="String">
+
+	SELECT*FROM p_t
+	WHERE p_idx = #{p_idx}
+	
+</select>
+
+
+<select id="countPvo" resultType="int" parameterType="Map">
+	SELECT Count(*) FROM p_t
+	Where o_val1 = 1
+</select>
+
+
+
+<insert id="aPvoadd" parameterType="mybatis.vo.productVO" useGeneratedKeys="true" keyProperty="p_idx">
+INSERT INTO p_t(m_idx, p_title, p_content, p_sfile, p_price, p_status, p_cnt, p_artist, o_val1)
+VALUES (#{m_idx},#{p_title},#{p_content},#{p_sfile},#{p_price},1, #{p_cnt},#{p_artist},1)
+</insert>
+
+<insert id="wladd" parameterType="Map">
+	insert into wl_t(m_idx,p_idx,wl_date)
+	values (#{m_idx},#{p_idx},now())
+</insert>
+
+<update id="aPvoedit" parameterType="mybatis.vo.productVO">
+	UPDATE p_t
+	<trim prefix="set" suffixOverrides=",">
+		<if test="p_title != null">p_title=#{p_title},</if>
+		<if test="p_content != null">p_content=#{p_content},</if>
+		<if test="p_sfile != null">p_sfile=#{p_sfile},</if>
+		<if test="p_price != null">p_price=#{p_price},</if>
+		<if test="p_status != null">p_status=#{p_status},</if>
+		<if test="p_cnt != null">p_cnt=#{p_cnt},</if>
+		<if test="m_idx != null">m_idx=#{m_idx},</if>
+		<if test="p_artist != null">p_artist=#{p_artist},</if>
+		
+		
+	</trim>
+	WHERE p_idx=#{p_idx}
+		
+</update>
+
+<select id="getAdminPvolist" resultType="mybatis.vo.productVO" parameterType="Map">
+ SELECT * FROM(
+ 	SELECT @RN:=@RN+1 AS rnum, a.* FROM(SELECT * FROM p_t WHERE o_val1=1 ORDER BY p_idx DESC )a, 
+ 	(SELECT @RN:=0)r
+ ) a WHERE a.rnum BETWEEN #{begin} AND #{end}
+</select>
+
+<!-- 대시보드용 -->
+	<select id="adminPVOcountS" resultType="int">
+		SELECT COUNT(*) FROM p_t
+		WHERE p_status = 1 and o_val1=1
+	</select>
+	<select id="adminPVOcountSO" resultType="int">
+		SELECT COUNT(*) FROM p_t
+		WHERE p_status = 0 and o_val1=1
+	</select>
+	
+	<select id="adminOVOcountSR" resultType="int">
+		SELECT COUNT(*) FROM o_t
+		WHERE o_status = 1
+	</select>
+	<select id="adminOVOcountSN" resultType="int">
+		SELECT COUNT(*) FROM o_t
+		WHERE o_status = 2
+	</select>
+	<select id="adminOVOcountSF" resultType="int">
+		SELECT COUNT(*) FROM o_t
+		WHERE o_status = 3
+	</select>
+	<select id="adminOVOcountOF" resultType="int">
+		SELECT COUNT(*) FROM o_t
+		WHERE o_status = 4
+	</select>
+
+	<select id="adminQVOcountAR" resultType="int">
+		SELECT COUNT(*) FROM p_t
+		WHERE p_wait=1 and o_val1=2
+	</select>
+	<select id="adminQVOcountAF" resultType="int">
+		SELECT COUNT(*) FROM p_t
+		WHERE p_wait=0 and o_val1=2
+	</select>
+<!-- 대시보드용 끝 -->
+
+
+
+<!-- search 기능 -->
+
+<select id = "searchPVO_count" resultType="int" parameterType="Map">
+	  SELECT COUNT(*) FROM p_t 
+	  <where>
+		<trim suffixOverrides="AND">
+	 	 	o_val1 = 1 AND	 	 
+		  	<if test = "searchType != null and searchValue != null">
+		  		<choose>
+		  			<when test="searchType == 0">
+		  				(p_title LIKE CONCAT('%',#{searchValue},'%') OR p_artist LIKE CONCAT('%',#{searchValue},'%'))
+		  			</when>
+		  			<when test="searchType == 1">
+		  				p_title LIKE CONCAT('%',#{searchValue},'%')
+		  			</when>
+		  			<when test="searchType == 2">
+		  				p_artist LIKE CONCAT('%',#{searchValue},'%')
+		  			</when>
+		  		</choose>
+		 	 </if>		
+	 	 </trim>	 	 
+	 </where>	  
+</select>
+
+<select id = "searchPVO" resultType="mybatis.vo.productVO" parameterType="Map">
+	   SELECT * FROM(
+ 	SELECT @RN:=@RN+1 AS rnum, a.* FROM(SELECT * FROM p_t
+	  <where>
+		<trim suffixOverrides="AND">
+	 	 	o_val1 = 1 AND	 	 
+		  	<if test = "searchType != null and searchValue != null">
+		  		<choose>
+		  			<when test="searchType == 0">
+		  				(p_title LIKE CONCAT('%',#{searchValue},'%') OR p_artist LIKE CONCAT('%',#{searchValue},'%'))
+		  			</when>
+		  			<when test="searchType == 1">
+		  				p_title LIKE CONCAT('%',#{searchValue},'%')
+		  			</when>
+		  			<when test="searchType == 2">
+		  				p_artist LIKE CONCAT('%',#{searchValue},'%')
+		  			</when>
+		  		</choose>
+		 	 </if>		
+	 	 </trim>
+	 	 
+	 </where>
+	 )a, 
+ 	(SELECT @RN:=0)r
+ ) a WHERE a.rnum BETWEEN #{begin} AND #{end}
+</select>
+<!-- 문의 -->
+<resultMap type="mybatis.vo.questionVO" id="map10">
+  	<id column="m_idx" property="m_idx"/>
+  	<!-- 원글 하나에 여러 개의 댓글들이 존재할 수 있으므로
+  		집합구조를 일대 다 관계에 맞는 collection을 선언한다. -->
+  	<collection property="mvolist" ofType="mybatis.vo.memberVO" 
+  		select="ViewQlist2" column="m_idx"/>
+  </resultMap>
+
+<select id="qlist" resultType="mybatis.vo.questionVO" parameterType="Map" >
+	 	select * from (
+	select @RN:=@RN+1 as p_num,a.* from(
+		select * from p_t
+			where p_status = '1' and o_val1 = '2'
+       		order by p_idx desc
+        ) a, (select @RN:=0) as r
+       	) AS C 
+        iNNER JOIN wl_t AS B
+		ON C.p_idx = B.p_idx
+			WHERE C.p_idx = B.p_idx AND p_num between #{begin} and #{end};
+</select>
+
+<select id="ViewQlist" resultMap="map10" parameterType="Map" >
+	SELECT * FROM p_t
+  	WHERE p_idx = #{p_idx}
+	
+</select>
+
+<select id="ViewQlist2" resultType="mybatis.vo.memberVO" >
+	SELECT * FROM m_t
+  	WHERE m_idx = #{m_idx}
+</select>
+
+ <insert id="answerAdd" parameterType="mybatis.vo.questionVO" useGeneratedKeys="true" keyProperty="p_idx" >
+  	INSERT INTO p_t(p_title, p_content, p_secret, o_val1, o_val2, m_idx, p_status)
+  	VALUES(#{p_title}, #{p_content}, #{p_secret}, '3', #{o_val2}, #{m_idx}, '1')
+ </insert>
+
+<insert id="logAdd" parameterType="mybatis.vo.questionVO">
+  	INSERT INTO wl_t(p_idx, m_idx, wl_date)
+  	VALUES(#{p_idx}, #{m_idx}, NOW())
+</insert>
+  
+<select id="getAnswer" resultType="mybatis.vo.questionVO" parameterType="String">
+	SELECT * FROM p_t
+	WHERE o_val2 = #{oval} AND p_status = "1"
+</select>
+
+<update id="updateWait" parameterType="String">
+	UPDATE p_t
+	SET p_wait = '0'
+	WHERE p_idx = #{oval}
+</update>
+
+<update id="updateWait2" parameterType="String">
+	UPDATE p_t
+	SET p_wait = '1'
+	WHERE p_idx = #{p_idx}
+</update>
+
+<update id="updateStatus" parameterType="String">
+	UPDATE p_t
+	SET p_status = '0'
+	WHERE p_idx = #{del_idx}
+</update>
+
+<select id="totalCount" resultType="int">
+  	SELECT COUNT(*) FROM p_t
+  	WHERE p_status = '1' AND o_val1 = '2'
+</select>
+
+
+
+<!-- 문의 -->
+
+
+
+<!-- 회원 -->
+<!-- 전체 수를 반환하는 기능: 검색기능도 있어야 한다. -->
+  <select id="count" resultType="int" parameterType="Map">
+  	SELECT COUNT(*) FROM m_t
+  	
+  	<if test="searchType != null and searchValue != null">
+  		
+	  	<where>
+	  		<trim suffixOverrides="AND">
+  				<if test="m_status != null">
+		  			m_status = #{m_status} AND 
+		  		</if>
+		  		<choose>
+			  	 <when test="searchType == 0"> 
+		     		m_id LIKE CONCAT('%',#{searchValue},'%')
+		  		 </when>
+			    <when test="searchType == 1">
+			    	m_name LIKE CONCAT('%',#{searchValue},'%')
+		 		   </when>
+			    <when test="searchType == 2"> 
+			   	 	m_phone LIKE CONCAT('%',#{searchValue},'%')
+			     </when>
+		  		</choose>
+	  		</trim>
+		 </where>
+  	</if>
+  </select>
+
+
+
+  <!-- 전체회원 리스트 받기 -->
+  <select id="amemlist" resultType="mybatis.vo.memberVO" 
+  parameterType="Map">
+	  SELECT * FROM(	
+	  	SELECT @RN:=@RN+1 AS rnum, a.* FROM (SELECT * FROM m_t
+	<if test="m_status !=null">
+		  	<where>
+		  		m_status = #{m_status}
+		  	</where>
+		  	</if>
+		 ORDER BY m_idx DESC
+	  	) a, (SELECT @RN:=0) r
+	  ) a WHERE a.rnum BETWEEN #{begin} AND #{end}
+	  
+  </select>
+  
+  
+  <!-- 회원 검색 -->
+  <select id="search" resultType="mybatis.vo.memberVO" parameterType="Map">
+  	 SELECT * FROM(	
+	  	SELECT @RN:=@RN+1 AS rnum, a.* FROM (SELECT * FROM m_t
+		  	<if test="searchType != null and searchValue != null">
+  		
+			  	<where>
+			  		<trim suffixOverrides="AND">
+		  				<if test="m_status != null">
+				  			m_status = #{m_status} AND 
+				  		</if>
+				  		<choose>
+					  	 <when test="searchType == 0"> 
+				     		m_id LIKE CONCAT('%',#{searchValue},'%')
+				  		 </when>
+					    <when test="searchType == 1">
+					    	m_name LIKE CONCAT('%',#{searchValue},'%')
+				 		   </when>
+					    <when test="searchType == 2"> 
+					   	 	m_phone LIKE CONCAT('%',#{searchValue},'%')
+					     </when>
+				  		</choose>
+			  		</trim>
+				 </where>
+		  	</if>
+		 ORDER BY m_idx DESC
+	  	) a, (SELECT @RN:=0) r
+	  ) a WHERE a.rnum BETWEEN #{begin} AND #{end}
+  </select>
+
+
+  
+  
+ <!-- 회원 상세보기 : 회원의 이름을 클릭했을때 기본키인 m_idx를 인자로 전달해서 해당 회원정보페이지로 이동-->
+<select id="amember" parameterType="String" resultType="mybatis.vo.memberVO">
+    SELECT * FROM m_t  WHERE m_idx = #{m_idx}
+</select> 
+
+
+<!-- 회원 정지시키기 : status 를 변경하기 -->
+<update id="suspendmem" parameterType="Map">
+	update m_t 
+	set m_status = #{m_status} where m_idx = #{m_idx}
+</update>
+<!-- 회원 -->
+
+
+<!-- 주문 -->
+
+ <select id="ooslist" resultType="mybatis.vo.orderVO" 
+  parameterType="Map">
+	  SELECT * FROM(	
+	  	SELECT @RN:=@RN+1 AS rnum, a.* FROM (SELECT * FROM o_t
+	  	<if test="searchType != null and searchValue != null">
+		  	<where>
+		  		<choose>
+		  			<when test="searchType == 0">
+		  				o_idx = #{searchValue}
+		  			</when>
+		  			<when test="searchType == 1">
+		  				o_class LIKE CONCAT('%',#{searchValue},'%')
+		  			</when>
+		  			<when test="searchType == 2">
+		  				o_num LIKE CONCAT('%',#{searchValue},'%')
+		  			</when>
+		  			<when test="searchType == 3">
+		  				p_idx = #{searchValue}
+		  			</when>
+		  			<when test="searchType == 4">
+		  				o_status = #{searchValue}
+		  			</when>
+		  		
+		  		</choose>
+		  	</where>
+		 </if>
+	  	) a, (SELECT @RN:=0) b
+	  ) a WHERE a.rnum BETWEEN #{begin} AND #{end}
+  </select>
+
+  <select id="oostotalCount" resultType="int">
+  	SELECT COUNT(*) FROM o_t
+  </select>
+  
+  
+   <!-- 사용자가 게시물의 제목을 클릭할 때 기본키인 o_idx를
+  		인자로 전달하여 해당 게시물을 찾아서 반환하는 기능 -->
+  <select id="getoos" parameterType="String" resultType="mybatis.vo.orderVO">
+  	SELECT * FROM o_t
+  	WHERE o_idx = #{num}
+  </select>
+  
+  
+  
+
+  <update id="oosadd" parameterType="Map">
+	UPDATE o_t
+	<trim prefix="SET" suffixOverrides=",">
+	o_idx = #{o_idx} ,   o_class = #{o_class} ,o_num = #{o_num} ,o_status = #{o_status} 
+</trim>
+	where o_idx = #{o_idx}
+</update>
+<!-- 주문 -->
+
+
+</mapper>
+
+
+
